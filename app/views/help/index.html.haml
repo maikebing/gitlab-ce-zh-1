@@ -19,8 +19,8 @@
     %br
     了解 Gitlab 更多内容请访问 #{link_to promo_host, promo_url, target: '_blank'}。
     %br
-    需要改进中文翻译，请#{link_to '派生https://gitlab.com/xhang/gitlab 项目', 'https://gitlab.com/xhang/gitlab/forks/new'}，
-    修改文件后提交#{link_to '合并请求', 'https://gitlab.com/xhang/gitlab/merge_requests/new'}。
+    如发现汉化翻译缺陷，请访问#{link_to 'Gitlab社区版汉化项目', 'https://github.com/marbleqi/gitlab-ce-zh'}，
+    提交#{link_to '问题', 'https://github.com/marbleqi/gitlab-ce-zh/issues/new'}。
     - if current_application_settings.help_page_text.present?
       %hr
       = markdown_field(current_application_settings, :help_page_text)

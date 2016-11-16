@@ -1,0 +1,33 @@
+- @no_container = true
+- page_title "系统信息"
+= render 'admin/background_jobs/head'
+
+%div{ class: container_class }
+  .prepend-top-default
+  .row
+    .col-sm-4
+      .light-well
+        %h4 中央处理器（CPU）
+        .data
+          - if @cpus
+            %h1= "#{@cpus.length}核"
+          - else
+            = icon('warning', class: 'text-warning')
+            无法采集CPU信息
+    .col-sm-4
+      .light-well
+        %h4 内存（Memory）
+        .data
+          - if @memory
+            %h1= "#{number_to_human_size(@memory.active_bytes)} / #{number_to_human_size(@memory.total_bytes)}"
+          - else
+            = icon('warning', class: 'text-warning')
+            无法采集内存信息
+    .col-sm-4
+      .light-well
+        %h4 硬盘（Disks）
+        .data
+          - @disks.each do |disk|
+            %h1= "#{number_to_human_size(disk[:bytes_used])} / #{number_to_human_size(disk[:bytes_total])}"
+            %p= "硬盘分区：#{disk[:disk_name]}"
+            %p= "挂载点：#{disk[:mount_path]}"
