@@ -1,28 +1,95 @@
-%div
-  %h2.left History
-  .right
-    = form_tag project_path(@project), :method => :get do
-      .span-2
-        = radio_button_tag :view, "recent", (params[:view] || "recent") == "recent", :onclick => "this.form.submit()", :id => "recent_view"
-        = label_tag "recent_view","Recent"
-      .span-2
-        = radio_button_tag :view, "day", params[:view] == "day", :onclick => "this.form.submit()", :id => "day_view"
-        = label_tag "day_view","Today"
-      .span-2
-        = radio_button_tag :view, "week", params[:view] == "week", :onclick => "this.form.submit()", :id => "week_view"
-        = label_tag "week_view","Week"
-  .clear
-  %hr
-.left.width-49p
-  %h3 Commits
-  =render "projects/recent_commits"
+- @no_container = true
 
-.right.width-49p
-  %h3 Talk
-  =render "projects/recent_messages"
+= content_for :meta_tags do
+  - if current_user
+    = auto_discovery_link_tag(:atom, namespace_project_path(@project.namespace, @project, format: :atom, private_token: current_user.private_token), title: "#{@project.name} 活动")
 
-:javascript
-  function updateDashboard(){
-    $('#content-container').load("#{escape_javascript(project_path(@project))} #content-container>*");
-  }
-  setInterval("updateDashboard()", 300000);
+= content_for :flash_message do
+  - if current_user && can?(current_user, :download_code, @project)
+    = render 'shared/no_ssh'
+    = render 'shared/no_password'
+
+= render 'projects/last_push'
+= render "home_panel"
+
+- if @project.feature_available?(:repository, current_user)
+  %nav.project-stats{ class: container_class }
+    %ul.nav
+      %li
+        = link_to project_files_path(@project) do
+          文件 (#{repository_size})
+      %li
+        = link_to namespace_project_commits_path(@project.namespace, @project, current_ref) do
+          提交 (#{number_with_delimiter(@project.commit_count)})
+          
+      %li
+        = link_to namespace_project_branches_path(@project.namespace, @project) do
+          分支 (#{number_with_delimiter(@repository.branch_count)})
+      %li
+        = link_to namespace_project_tags_path(@project.namespace, @project) do
+          标签 (#{number_with_delimiter(@repository.tag_count)})
+
+      - if default_project_view != 'readme' && @repository.readme
+        %li
+          = link_to '自述', readme_path(@project)
+
+      - if @repository.changelog
+        %li
+          = link_to '变更日志', changelog_path(@project)
+
+      - if @repository.license_blob
+        %li
+          = link_to license_short_name(@project), license_path(@project)
+
+      - if @repository.contribution_guide
+        %li
+          = link_to '贡献指南', contribution_guide_path(@project)
+
+      - if @repository.gitlab_ci_yml
+        %li
+          = link_to 'CI 配置', ci_configuration_path(@project)
+
+      - if current_user && can_push_branch?(@project, @project.default_branch)
+        - unless @repository.changelog
+          %li.missing
+            = link_to add_special_file_path(@project, file_name: 'CHANGELOG') do
+              增加变更日志
+        - unless @repository.license_blob
+          %li.missing
+            = link_to add_special_file_path(@project, file_name: 'LICENSE') do
+              增加许可证
+        - unless @repository.contribution_guide
+          %li.missing
+            = link_to add_special_file_path(@project, file_name: 'CONTRIBUTING.md', commit_message: '增加贡献指南') do
+              增加贡献指南
+        - unless @repository.gitlab_ci_yml
+          %li.missing
+            = link_to add_special_file_path(@project, file_name: '.gitlab-ci.yml') do
+              设置 CI
+
+      %li.project-repo-buttons-right
+        .project-repo-buttons.project-right-buttons
+          - if current_user
+            = render 'shared/members/access_request_buttons', source: @project
+            = render "projects/buttons/koding"
+
+          .btn-group.project-repo-btn-group
+            = render 'projects/buttons/download', project: @project, ref: @ref
+            = render 'projects/buttons/dropdown'
+
+          = render 'shared/notifications/button', notification_setting: @notification_setting
+  - if @repository.commit
+    .project-last-commit{ class: container_class }
+      = render 'projects/last_commit', commit: @repository.commit, ref: current_ref, project: @project
+
+%div{ class: container_class }
+  - if @project.archived?
+    .text-warning.center.prepend-top-20
+      %p
+        = icon("exclamation-triangle fw")
+        已归档项目！版本库只读
+
+  - view_path = default_project_view
+
+  %div{ class: project_child_container_class(view_path) }
+    = render view_path

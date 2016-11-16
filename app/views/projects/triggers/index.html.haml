@@ -1,0 +1,90 @@
+- page_title "触发器"
+
+.row.prepend-top-default.append-bottom-default
+  .col-lg-3
+    %h4.prepend-top-0
+      = page_title
+    %p.prepend-top-20
+      触发器被 API 调用用于强制重新构建指定的分支或标签。
+    %p.append-bottom-0
+      点击
+      = link_to '触发器说明文档', help_page_path('ci/triggers/README'), target: '_blank'
+      了解更多。
+  .col-lg-9
+    .panel.panel-default
+      .panel-heading
+        %h4.panel-title
+          管理项目的触发器
+      .panel-body
+        - if @triggers.any?
+          .table-responsive
+            %table.table
+              %thead
+                %th
+                  %strong 令牌
+                %th
+                  %strong 最后使用
+                %th
+              = render partial: 'trigger', collection: @triggers, as: :trigger
+        - else
+          %p.settings-message.text-center.append-bottom-default
+            没有触发器，请使用下面的按钮增加。
+
+        = form_for @trigger, url: url_for(controller: 'projects/triggers', action: 'create') do |f|
+          = f.submit "增加触发器", class: 'btn btn-success'
+
+      .panel-footer
+
+        %p
+          在以下的示例中，你将看到如何使用触发器令牌调用外部API来重新构建一个特定的
+          %code 引用
+          (分支或者标签) 。
+        %p
+          你只需要将
+          %code TOKEN
+          和
+          %code REF_NAME
+          分别替换为触发器的令牌及分支（标签）名称。
+
+        %h5.prepend-top-default
+          使用 cURL
+
+        %p.light
+          复制授权码到下面并设置你的分支或标签名。此例子是将触发重新构建。
+
+        %pre
+          :plain
+            curl -X POST \
+                 -F token=TOKEN \
+                 -F ref=REF_NAME \
+                 #{builds_trigger_url(@project.id)}
+        %h5.prepend-top-default
+          使用 .gitlab-ci.yml
+
+        %p.light
+          在项目关联的
+          %code .gitlab-ci.yml
+          文件中, 包含以下代码片段
+          此例子将在依赖项目构建结束试触发此项目重新构建。
+
+        %pre
+          :plain
+            trigger_build:
+              stage: deploy
+              script:
+                - "curl -X POST -F token=TOKEN -F ref=REF_NAME #{builds_trigger_url(@project.id)}"
+        %h5.prepend-top-default
+          通过构建变量传递
+
+        %p.light
+          增加
+          %code variables[VARIABLE]=VALUE
+          到 API 请求中。变量的值可以被用来区分触发构建。
+
+        %pre.append-bottom-0
+          :plain
+            curl -X POST \
+                 -F token=TOKEN \
+                 -F "ref=REF_NAME" \
+                 -F "variables[RUN_NIGHTLY_BUILD]=true" \
+                 #{builds_trigger_url(@project.id)}

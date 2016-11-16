@@ -1,0 +1,14 @@
+%li.key-list-item
+  .pull-left.append-right-10
+    = icon 'key', class: "settings-list-icon hidden-xs"
+  .key-list-item-info
+    = link_to path_to_key(key, is_admin), class: "title" do
+      = key.title
+    .description
+      = key.fingerprint
+  .pull-right
+    %span.key-created-at
+      创建时间 #{time_ago_with_tooltip(key.created_at)}
+    = link_to path_to_key(key, is_admin), data: { confirm: '确定要继续么？'}, method: :delete, class: "btn btn-transparent prepend-left-10" do
+      %span.sr-only 删除
+      = icon('trash')

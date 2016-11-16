@@ -1,0 +1,26 @@
+- page_title "问题"
+= content_for :meta_tags do
+  - if current_user
+    = auto_discovery_link_tag(:atom, issues_group_url(@group, format: :atom, private_token: current_user.private_token), title: "#{@group.name} 问题")
+
+.top-area
+  = render 'shared/issuable/nav', type: :issues
+  .nav-controls
+    - if current_user
+      = link_to issues_group_url(@group, format: :atom, private_token: current_user.private_token), class: 'btn' do
+        = icon('rss')
+        %span.icon-label
+          订阅
+    = render 'shared/new_project_item_select', path: 'issues/new', label: "新建问题"
+
+= render 'shared/issuable/filter', type: :issues
+
+.row-content-block.second-block
+  只显示来自
+  %strong #{@group.name}
+  群组的问题。
+  - if current_user
+    请到#{link_to '仪表盘', issues_dashboard_path}页面查看全部问题。
+
+.prepend-top-default
+  = render 'shared/issues'

@@ -1,0 +1,48 @@
+- @no_container = true
+- page_title "运行环境"
+= render "projects/pipelines/head"
+
+%div{ class: container_class }
+  .top-area
+    %ul.nav-links
+      %li{class: ('active' if @scope.nil?)}
+        = link_to project_environments_path(@project) do
+          Available
+          %span.badge.js-available-environments-count
+            = number_with_delimiter(@all_environments.available.count)
+
+      %li{class: ('active' if @scope == 'stopped')}
+        = link_to project_environments_path(@project, scope: :stopped) do
+          Stopped
+          %span.badge.js-stopped-environments-count
+            = number_with_delimiter(@all_environments.stopped.count)
+
+    - if can?(current_user, :create_environment, @project) && !@all_environments.blank?
+      .nav-controls
+        = link_to new_namespace_project_environment_path(@project.namespace, @project), class: 'btn btn-create' do
+          新建运行环境
+
+  .environments-container
+    - if @all_environments.blank?
+      .blank-state.blank-state-no-icon
+        %h2.blank-state-title
+          你现在还没有任何运行环境。
+        %p.blank-state-text
+          运行环境是部署代码的地方, 比如模拟环境或者生产现场
+          %br
+          = succeed "。" do
+            = link_to "运行环境的介绍", help_page_path("ci/environments")
+        - if can?(current_user, :create_environment, @project)
+          = link_to new_namespace_project_environment_path(@project.namespace, @project), class: 'btn btn-create' do
+            新建运行环境
+    - else
+      .table-holder
+        %table.table.ci-table.environments
+          %tbody
+            %th 运行环境
+            %th 最后部署时间
+            %th 构建
+            %th 提交
+            %th
+            %th.hidden-xs
+          = render @environments

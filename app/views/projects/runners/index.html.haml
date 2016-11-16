@@ -1,0 +1,27 @@
+- page_title "Runners"
+
+.light.prepend-top-default
+  %p
+    一个 'Runner' 就是一个运行构建的进程。
+    你可以按照自己的需要设置很多个 Runner。
+    %br
+    Runners 可以被部署在不同的用户、服务器上，甚至在你本地使用的机器上。
+
+  %p 每个 Runner 可以是下列状态之一：
+  %div
+    %ul
+      %li
+        %span.label.label-success 激活的
+        \- Runner 是激活的，可以处理任何新构建
+      %li
+        %span.label.label-danger 暂停的
+        \- Runner 被暂停，不会接受任何新构建
+
+%hr
+
+%p.lead 要开始接受你的构建，需要你给你的项目增加特定的 Runner 或者使用共享的 Runner
+.row
+  .col-sm-6
+    = render 'specific_runners'
+  .col-sm-6
+    = render 'shared_runners'

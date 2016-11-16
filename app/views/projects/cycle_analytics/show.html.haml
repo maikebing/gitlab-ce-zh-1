@@ -1,0 +1,59 @@
+- @no_container = true
+- page_title "周期分析"
+= render "projects/pipelines/head"
+
+#cycle-analytics{class: container_class, "v-cloak" => "true", data: { request_path: project_cycle_analytics_path(@project) }}
+
+  .bordered-box.landing.content-block{"v-if" => "!isHelpDismissed"}
+    = icon('times', class: 'dismiss-icon', "@click" => "dismissLanding()")
+    .row
+      .col-sm-3.col-xs-12.svg-container
+        = custom_icon('icon_cycle_analytics_splash')
+      .col-sm-8.col-xs-12.inner-content
+        %h4
+          周期分析介绍
+        %p
+          周期分析给出了一个项目从概念设计到投入生产需要花费多长时间的概览。
+
+        = link_to "了解更多",  help_page_path('user/project/cycle_analytics'), target: '_blank', class: 'btn'
+
+  = icon("spinner spin", "v-show" => "isLoading")
+
+  .wrapper{"v-show" => "!isLoading && !hasError"}
+    .panel.panel-default
+      .panel-heading
+        Pipeline Health
+
+      .content-block
+        .container-fluid
+          .row
+            .col-sm-3.col-xs-12.column{"v-for" => "item in analytics.summary"}
+              %h3.header {{item.value}}
+              %p.text {{item.title}}
+
+            .col-sm-3.col-xs-12.column
+              .dropdown.inline.js-ca-dropdown
+                %button.dropdown-menu-toggle{"data-toggle" => "dropdown", :type => "button"}
+                  %span.dropdown-label 最近 30 天
+                  %i.fa.fa-chevron-down
+                %ul.dropdown-menu.dropdown-menu-align-right
+                  %li
+                    %a{'href' => "#", 'data-value' => '30'}
+                      最近 30 天
+                  %li
+                    %a{'href' => "#", 'data-value' => '90'}
+                      最近 90 天
+
+    .bordered-box
+      %ul.content-list
+        %li{"v-for" => "item in analytics.stats"}
+          .container-fluid
+            .row
+              .col-xs-8.title-col
+                %p.title
+                  {{item.title}}
+                %p.text
+                  {{item.description}}
+              .col-xs-4.value-col
+                %span
+                  {{item.value}}

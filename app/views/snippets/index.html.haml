@@ -1,14 +1,13 @@
-%div
-  - if can? current_user, :write_snippet, @project
-    .left= link_to 'New Snippet', new_project_snippet_path(@project), :class => "lbutton vm"
+- page_title "属于 #{@user.name}", "代码片段"
 
-  %table.round-borders#snippets-table
-    %tr
-      %th Author
-      %th Title
-      %th File name
-      %th
-    = render @snippets.fresh
-:javascript
-  $('.delete-snippet').live('ajax:success', function() {
-    $(this).closest('tr').fadeOut(); });
+%ol.breadcrumb
+  %li
+    = link_to snippets_path do
+      代码片段
+  %li
+    = @user.name
+  .pull-right.hidden-xs
+    = link_to user_path(@user) do
+      #{@user.name} 个人资料页面
+
+= render 'snippets'

@@ -1,0 +1,67 @@
+- @no_container = true
+
+= content_for :flash_message do
+  - if current_user && can?(current_user, :download_code, @project)
+    = render 'shared/no_ssh'
+    = render 'shared/no_password'
+
+= render "home_panel"
+
+.row-content-block.second-block.center
+  %h3.page-title
+    当前项目的版本仓库是空的
+  - if can?(current_user, :push_code, @project)
+    %p
+      可以通过下面的命令行推送一个已存在的版本库。
+    %p
+      或者可以从增加
+      = succeed '，' do
+        = link_to "README", new_readme_path, class: 'underlined-link'
+      或一个
+      = succeed '，' do
+        = link_to "许可证", add_special_file_path(@project, file_name: 'LICENSE'), class: 'underlined-link'
+      或一个
+      = link_to '.gitignore', add_special_file_path(@project, file_name: '.gitignore'), class: 'underlined-link'
+      文件开始本项目。
+    %p
+      由于主分支(master)会被自动保护，只有当前项目的拥有者或者您具备主程序员权限才能进行初始推送。
+
+- if can?(current_user, :push_code, @project)
+  %div{ class: container_class }
+    .prepend-top-20
+    .empty_wrapper
+      %h3.page-title-empty
+        命令行指令
+      %div.git-empty
+        %fieldset
+          %h5 Git 全局设置
+          %pre.light-well
+            :preserve
+              git config --global user.name "#{h git_user_name}"
+              git config --global user.email "#{h git_user_email}"
+
+        %fieldset
+          %h5 创建新版本库
+          %pre.light-well
+            :preserve
+              git clone #{ content_tag(:span, default_url_to_repo, class: 'clone')}
+              cd #{h @project.path}
+              touch README.md
+              git add README.md
+              git commit -m "add README"
+              git push -u origin master
+
+        %fieldset
+          %h5 已存在的文件夹或 Git 仓库
+          %pre.light-well
+            :preserve
+              cd existing_folder
+              git init
+              git remote add origin #{ content_tag(:span, default_url_to_repo, class: 'clone')}
+              git add .
+              git commit
+              git push -u origin master
+
+          - if can? current_user, :remove_project, @project
+            .prepend-top-20
+              = link_to '删除项目', [@project.namespace.becomes(Namespace), @project], data: { confirm: remove_project_message(@project)}, method: :delete, class: "btn btn-remove pull-right"

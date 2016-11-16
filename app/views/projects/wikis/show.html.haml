@@ -1,0 +1,25 @@
+- @no_container = true
+- page_title @page.title.capitalize, "Wiki"
+= render 'nav'
+
+%div{ class: container_class }
+  .top-area
+    .nav-text
+      %strong= @page.title.capitalize
+
+      %span.wiki-last-edit-by
+        &middot;
+        #{@page.commit.author.name} #{time_ago_with_tooltip(@page.commit.authored_date)} 最后编辑
+
+    .nav-controls
+      = render 'main_links'
+
+  - if @page.historical?
+    .warning_message
+      这是本页面的旧版本。
+      你可以查看#{link_to "最近修改版本", namespace_project_wiki_path(@project.namespace, @project, @page)}或浏览#{link_to "历史记录", namespace_project_wiki_history_path(@project.namespace, @project, @page)}。
+
+  .wiki-holder.prepend-top-default.append-bottom-default
+    .wiki
+      = preserve do
+        = render_wiki_content(@page)

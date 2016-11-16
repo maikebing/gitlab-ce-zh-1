@@ -1,0 +1,9 @@
+.clearfix.calendar
+  .js-contrib-calendar
+  .calendar-hint
+    问题、合并请求和推送事件摘要
+:javascript
+  new Calendar(
+    #{@activity_dates.to_json},
+    '#{user_calendar_activities_path}'
+  );

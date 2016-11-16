@@ -1,0 +1,25 @@
+- @no_container = true
+- page_title "编辑", @page.title.capitalize, "维基"
+= render 'nav'
+
+%div{ class: container_class }
+  .top-area
+    .nav-text
+      %strong
+        - if @page.persisted?
+          = link_to @page.title.capitalize, namespace_project_wiki_path(@project.namespace, @project, @page)
+        - else
+          = @page.title.capitalize
+      %span.light
+        &middot;
+        编辑页面
+
+    .nav-controls
+      - if !(@page && @page.persisted?)
+        - if can?(current_user, :create_wiki, @project)
+          = link_to '#modal-new-wiki', class: "add-new-wiki btn btn-new", "data-toggle" => "modal" do
+            新建页面
+      = render 'main_links'
+
+
+  = render 'form'

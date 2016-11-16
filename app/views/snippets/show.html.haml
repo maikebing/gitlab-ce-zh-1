@@ -1,26 +1,15 @@
-- if !@snippet.expired?
-  %h2
-    = "Snippet ##{@snippet.id} - #{@snippet.title}"
+- page_title @snippet.title, "代码片段"
 
-  .view_file
-    .view_file_header
-      %strong
-        = @snippet.file_name
-        %br/
-    .view_file_content
-      :erb
-        <%= raw @snippet.colorize %>
+= render 'shared/snippets/header'
 
-  - if can?(current_user, :admin_snippet, @project) || @snippet.author == current_user
-    = link_to 'Edit', edit_project_snippet_path(@project, @snippet), :class => "lbutton positive"
-  - if can?(current_user, :admin_snippet, @project) || @snippet.author == current_user
-    = link_to 'Destroy', [@project, @snippet], :confirm => 'Are you sure?', :method => :delete, :class => "lbutton delete-snippet negative", :id => "destroy_snippet_#{@snippet.id}"
-  .clear
-  %br
-  .snippet_notes= render "notes/notes"
+%article.file-holder.snippet-file-content
+  .file-title
+    = blob_icon 0, @snippet.file_name
+    = @snippet.file_name
+    .file-actions
+      = clipboard_button(clipboard_target: ".blob-content[data-blob-id='#{@snippet.id}']")
+      = link_to '原文件', raw_snippet_path(@snippet), class: "btn btn-sm", target: "_blank"
+      = link_to '下载', download_snippet_path(@snippet), class: "btn btn-sm"
+  = render 'shared/snippets/blob'
 
-  .clear
-
-- else
-  %h2
-    Sorry, this snippet is no longer exists
+= render 'award_emoji/awards_block', awardable: @snippet, inline: true

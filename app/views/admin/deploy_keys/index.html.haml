@@ -1,0 +1,27 @@
+- page_title "部署密钥"
+.panel.panel-default.prepend-top-default
+  .panel-heading
+    公开的部署密钥 (#{@deploy_keys.count})
+    .controls
+      = link_to '新建部署密钥', new_admin_deploy_key_path, class: "btn btn-new btn-sm"
+  - if @deploy_keys.any?
+    .table-holder
+      %table.table
+        %thead.panel-heading
+          %tr
+            %th 标题
+            %th 指纹
+            %th 创建时间
+            %th
+        %tbody
+          - @deploy_keys.each do |deploy_key|
+            %tr
+              %td
+                %strong= deploy_key.title
+              %td
+                %code.key-fingerprint= deploy_key.fingerprint
+              %td
+                %span.cgray
+                  创建时间 #{time_ago_with_tooltip(deploy_key.created_at)}
+              %td
+                = link_to '删除', admin_deploy_key_path(deploy_key), data: { confirm: '确定要删除该部署密钥？'}, method: :delete, class: "btn btn-sm btn-remove delete-key pull-right"

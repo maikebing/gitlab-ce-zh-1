@@ -1,0 +1,23 @@
+- page_title "新部署密钥"
+%h3.page-title 新的公开的部署密钥
+%hr
+
+%div
+  = form_for [:admin, @deploy_key], html: { class: 'deploy-key-form form-horizontal' } do |f|
+    = form_errors(@deploy_key)
+
+    .form-group
+      = f.label :title, "标题", class: "control-label"
+      .col-sm-10= f.text_field :title, class: 'form-control'
+    .form-group
+      = f.label :key, "密钥", class: "control-label"
+      .col-sm-10
+        %p.light
+          在这里粘贴机器公钥。如何生成密钥请点击
+          = link_to "这里", help_page_path("ssh/README")
+        = f.text_area :key, class: "form-control thin_area", rows: 5
+
+    .form-actions
+      = f.submit '创建', class: "btn-create btn"
+      = link_to "取消", admin_deploy_keys_path, class: "btn btn-cancel"
+

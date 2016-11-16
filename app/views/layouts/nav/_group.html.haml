@@ -1,0 +1,39 @@
+= render 'layouts/nav/group_settings'
+.scrolling-tabs-container{ class: nav_control_class }
+  .fade-left
+    = icon('angle-left')
+  .fade-right
+    = icon('angle-right')
+  %ul.nav-links.scrolling-tabs
+    = nav_link(path: 'groups#show', html_options: {class: 'home'}) do
+      = link_to group_path(@group), title: '主页' do
+        %span
+          群组
+    = nav_link(path: 'groups#activity') do
+      = link_to activity_group_path(@group), title: '活动' do
+        %span
+          活动
+    = nav_link(controller: [:group, :labels]) do
+      = link_to group_labels_path(@group), title: 'Labels' do
+        %span
+          Labels
+    = nav_link(controller: [:group, :milestones]) do
+      = link_to group_milestones_path(@group), title: '里程碑' do
+        %span
+          里程碑
+    = nav_link(path: 'groups#issues') do
+      = link_to issues_group_path(@group), title: '问题' do
+        %span
+          问题
+          - issues = IssuesFinder.new(current_user, group_id: @group.id, state: 'opened').execute
+          %span.badge.count= number_with_delimiter(issues.count)
+    = nav_link(path: 'groups#merge_requests') do
+      = link_to merge_requests_group_path(@group), title: '合并请求' do
+        %span
+          合并请求
+          - merge_requests = MergeRequestsFinder.new(current_user, group_id: @group.id, state: 'opened').execute
+          %span.badge.count= number_with_delimiter(merge_requests.count)
+    = nav_link(controller: [:group_members]) do
+      = link_to group_group_members_path(@group), title: '成员' do
+        %span
+          成员

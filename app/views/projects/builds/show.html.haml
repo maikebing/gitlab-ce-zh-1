@@ -1,0 +1,59 @@
+- @no_container = true
+- page_title "#{@build.name} (##{@build.id})", "构建"
+- trace_with_state = @build.trace_with_state
+- header_title project_title(@project, "构建", project_builds_path(@project))
+= render "projects/pipelines/head", build_subnav: true
+
+%div{ class: container_class }
+  .build-page
+    = render "header"
+
+    - if @build.stuck?
+      - unless @build.any_runners_online?
+        .bs-callout.bs-callout-warning
+          %p
+            - if no_runners_for_project?(@build.project)
+              此构建被卡住，因为没有任何活动runnner指定给该项目。
+            - elsif @build.tags.any?
+              此构建被卡住，因为没有任何该项目指定标签的 runner 在线。指定的标签如下：
+              - @build.tags.each do |tag|
+                %span.label.label-primary
+                  = tag
+            - else
+              此构建被卡住，因为没有任何活动的 runner 能运行此构建。
+
+            %br
+            转到
+            = link_to namespace_project_runners_path(@build.project.namespace, @build.project) do
+              Runners 页面
+
+    .prepend-top-default
+      - if @build.active?
+        .autoscroll-container
+          %button.btn.btn-success.btn-sm#autoscroll-button{:type => "button", :data => {:state => 'disabled'}} enable autoscroll
+      - if @build.erased?
+        .erased.alert.alert-warning
+          - erased_by = "被 #{link_to @build.erased_by.name, user_path(@build.erased_by)}" if @build.erased_by
+          构建 #{erased_by.html_safe} 在 #{time_ago_with_tooltip(@build.erased_at)} 删除
+      - else
+        #js-build-scroll.scroll-controls
+          = link_to '#build-trace', class: 'btn' do
+            %i.fa.fa-angle-up
+          = link_to '#down-build-trace', class: 'btn' do
+            %i.fa.fa-angle-down
+        %pre.build-trace#build-trace
+          %code.bash.js-build-output
+          = icon("refresh spin", class: "js-build-refresh")
+
+      #down-build-trace
+
+  = render "sidebar"
+
+  :javascript
+    new Build({
+      page_url: "#{namespace_project_build_url(@project.namespace, @project, @build)}",
+      build_url: "#{namespace_project_build_url(@project.namespace, @project, @build, :json)}",
+      build_status: "#{@build.status}",
+      build_stage: "#{@build.stage}",
+      state1: "#{trace_with_state[:state]}"
+    })

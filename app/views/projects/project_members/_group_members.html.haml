@@ -1,0 +1,19 @@
+.panel.panel-default
+  .panel-heading
+    有权访问
+    %strong #{@group.name}
+    的成员
+    %span.badge= members.size
+    - if can?(current_user, :admin_group_member, @group)
+      .controls
+        = link_to '编辑群组成员',
+                  group_group_members_path(@group),
+                  class: 'btn'
+  %ul.content-list
+    = render partial: 'shared/members/member',
+             collection: members.limit(20),
+             as: :member,
+             locals: { show_controls: false }
+    - if members.size > 20
+      %li
+        和 #{members.count - 20} 个更多成员。完整列表请访问 #{link_to '群组成员页面', group_group_members_path(@group)}

@@ -1,0 +1,18 @@
+- @no_container = true
+- page_title "持续集成", "图表"
+= render 'head'
+
+%div{ class: container_class }
+  .sub-header-block
+    .oneline
+      持续集成图表集合
+
+  #charts.ci-charts
+    .row
+      .col-md-6
+        = render 'projects/graphs/ci/overall'
+      .col-md-6
+        = render 'projects/graphs/ci/build_times'
+
+    %hr
+    = render 'projects/graphs/ci/builds'

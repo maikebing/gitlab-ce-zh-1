@@ -1,4 +1,5 @@
+- page_title "编辑", @user.name, "用户"
+%h3.page-title
+  编辑用户：#{@user.name}
+%hr
 = render 'form'
-
-= link_to 'Show', [:admin, @admin_user], :class => "right lbutton"
-= link_to 'Back', admin_users_path, :class => "right lbutton"

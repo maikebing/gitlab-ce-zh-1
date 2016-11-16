@@ -1,18 +1,21 @@
-class ProjectsController < ApplicationController
-  before_filter :project, :except => [:index, :new, :create]
-  layout :determine_layout
+class ProjectsController < Projects::ApplicationController
+  include IssuableCollections
+  include ExtractsPath
+
+  before_action :authenticate_user!, except: [:show, :activity, :refs]
+  before_action :project, except: [:new, :create]
+  before_action :repository, except: [:new, :create]
+  before_action :assign_ref_vars, only: [:show], if: :repo_exists?
+  before_action :tree, only: [:show], if: [:repo_exists?, :project_view_files?]
 
   # Authorize
-  before_filter :add_project_abilities
-  before_filter :authorize_read_project!, :except => [:index, :new, :create]
-  before_filter :authorize_admin_project!, :only => [:edit, :update, :destroy]
+  before_action :authorize_admin_project!, only: [:edit, :update, :housekeeping, :download_export, :export, :remove_export, :generate_new_export]
+  before_action :event_filter, only: [:show, :activity]
 
-  before_filter :require_non_empty_project, :only => [:blob, :tree]
+  layout :determine_layout
 
   def index
-    source = current_user.projects
-    source = source.tagged_with(params[:tag]) unless params[:tag].blank?
-    @projects = source.all
+    redirect_to(current_user ? root_path : explore_root_path)
   end
 
   def new
@@ -20,146 +23,341 @@ class ProjectsController < ApplicationController
   end
 
   def edit
+    render 'edit'
   end
 
   def create
-    @project = Project.new(params[:project])
-    @project.owner = current_user
+    @project = ::Projects::CreateService.new(current_user, project_params).execute
 
-    Project.transaction do
-      @project.save!
-      @project.users_projects.create!(:admin => true, :read => true, :write => true, :user => current_user)
-    end
-
-    respond_to do |format|
-      if @project.valid?
-        format.html { redirect_to @project, notice: 'Project was successfully created.' }
-        format.js
-      else
-        format.html { render action: "new" }
-        format.js
-      end
-    end
-  rescue Gitosis::AccessDenied
-    render :js => "location.href = '#{errors_gitosis_path}'" and return
-  rescue StandardError => ex
-    @project.errors.add(:base, "Cant save project. Please try again later")
-    respond_to do |format|
-      format.html { render action: "new" }
-      format.js
+    if @project.saved?
+      redirect_to(
+        project_path(@project),
+        notice: "项目 '#{@project.name}' 创建成功。"
+      )
+    else
+      render 'new'
     end
   end
 
   def update
+    status = ::Projects::UpdateService.new(@project, current_user, project_params).execute
+
+    # Refresh the repo in case anything changed
+    @repository = project.repository
+
     respond_to do |format|
-      if project.update_attributes(params[:project])
-        format.html { redirect_to project, :notice => 'Project was successfully updated.' }
-        format.js
+      if status
+        flash[:notice] = "项目 '#{@project.name}' 更新成功"
+        format.html do
+          redirect_to(
+            edit_project_path(@project),
+            notice: "项目 '#{@project.name}' 更新成功"
+          )
+        end
       else
-        format.html { render action: "edit" }
-        format.js
+        format.html { render 'edit' }
+      end
+
+      format.js
+    end
+  end
+
+  def transfer
+    return access_denied! unless can?(current_user, :change_namespace, @project)
+
+    namespace = Namespace.find_by(id: params[:new_namespace_id])
+    ::Projects::TransferService.new(project, current_user).execute(namespace)
+
+    if @project.errors[:new_namespace].present?
+      flash[:alert] = @project.errors[:new_namespace].first
+    end
+  end
+
+  def remove_fork
+    return access_denied! unless can?(current_user, :remove_fork_project, @project)
+
+    if ::Projects::UnlinkForkService.new(@project, current_user).execute
+      flash[:notice] = '派生关系被删除。'
+    end
+  end
+
+  def activity
+    respond_to do |format|
+      format.html
+      format.json do
+        load_events
+        pager_json('events/_events', @events.count)
       end
     end
   end
 
   def show
-    return render "projects/empty" unless @project.repo_exists?
-    @date = case params[:view]
-            when "week" then Date.today - 7.days
-            when "day" then Date.today
-            else nil
-            end
-
-    if @date
-      @date = @date.at_beginning_of_day
-
-      @commits = @project.commits_since(@date)
-      @messages = project.notes.since(@date).order("created_at DESC")
-    else
-      @commits = @project.fresh_commits
-      @messages = project.notes.fresh.limit(10)
-    end
-  end
-
-  #
-  # Wall
-  #
-
-  def wall
-    @note = Note.new
-    @notes = @project.common_notes.order("created_at DESC")
-    @notes = @notes.fresh.limit(20)
-
-    respond_to do |format| 
-      format.html
-      format.js { respond_with_notes }
-    end
-  end
-
-  #
-  # Repository preview
-  #
-
-  def tree
-    load_refs # load @branch, @tag & @ref
-
-    @repo = project.repo
-
-    if params[:commit_id]
-      @commit = @repo.commits(params[:commit_id]).first
-    else
-      @commit = @repo.commits(@ref || "master").first
+    if @project.import_in_progress?
+      redirect_to namespace_project_import_path(@project.namespace, @project)
+      return
     end
 
-    @tree = @commit.tree
-    @tree = @tree / params[:path] if params[:path]
+    if @project.pending_delete?
+      flash[:alert] = "项目 #{@project.name} 正在排队删除。"
+    end
 
     respond_to do |format|
-      format.html # show.html.erb
-      format.js do
-        # diasbale cache to allow back button works
-        response.headers["Cache-Control"] = "no-cache, no-store, max-age=0, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "Fri, 01 Jan 1990 00:00:00 GMT"
+      format.html do
+        @notification_setting = current_user.notification_settings_for(@project) if current_user
+        render_landing_page
+      end
+
+      format.atom do
+        load_events
+        render layout: false
       end
     end
-  rescue
-    return render_404
-  end
-
-  def blob
-    @repo = project.repo
-    @commit = project.commit(params[:commit_id])
-    @tree = project.tree(@commit, params[:path])
-
-    if @tree.is_a?(Grit::Blob)
-      send_data(@tree.data, :type => @tree.mime_type, :disposition => 'inline', :filename => @tree.name)
-    else
-      head(404)
-    end
-  rescue
-    return render_404
   end
 
   def destroy
-    project.destroy
+    return access_denied! unless can?(current_user, :remove_project, @project)
+
+    ::Projects::DestroyService.new(@project, current_user, {}).async_execute
+    flash[:alert] = "项目 '#{@project.name}' 将被删除。"
+
+    redirect_to dashboard_projects_path
+  rescue Projects::DestroyService::DestroyError => ex
+    redirect_to edit_project_path(@project), alert: ex.message
+  end
+
+  def autocomplete_sources
+    noteable =
+      case params[:type]
+      when 'Issue'
+        IssuesFinder.new(current_user, project_id: @project.id).
+          execute.find_by(iid: params[:type_id])
+      when 'MergeRequest'
+        MergeRequestsFinder.new(current_user, project_id: @project.id).
+          execute.find_by(iid: params[:type_id])
+      when 'Commit'
+        @project.commit(params[:type_id])
+      else
+        nil
+      end
+
+    autocomplete = ::Projects::AutocompleteService.new(@project, current_user)
+    participants = ::Projects::ParticipantsService.new(@project, current_user).execute(noteable)
+
+    @suggestions = {
+      emojis: Gitlab::AwardEmoji.urls,
+      issues: autocomplete.issues,
+      milestones: autocomplete.milestones,
+      mergerequests: autocomplete.merge_requests,
+      labels: autocomplete.labels,
+      members: participants,
+      commands: autocomplete.commands(noteable, params[:type])
+    }
 
     respond_to do |format|
-      format.html { redirect_to projects_url }
+      format.json { render json: @suggestions }
     end
   end
 
-  protected
+  def archive
+    return access_denied! unless can?(current_user, :archive_project, @project)
 
-  def project
-    @project ||= Project.find_by_code(params[:id])
+    @project.archive!
+
+    respond_to do |format|
+      format.html { redirect_to project_path(@project) }
+    end
+  end
+
+  def unarchive
+    return access_denied! unless can?(current_user, :archive_project, @project)
+
+    @project.unarchive!
+
+    respond_to do |format|
+      format.html { redirect_to project_path(@project) }
+    end
+  end
+
+  def housekeeping
+    ::Projects::HousekeepingService.new(@project).execute
+
+    redirect_to(
+      project_path(@project),
+      notice: "维护已开启成功"
+    )
+  rescue ::Projects::HousekeepingService::LeaseTaken => ex
+    redirect_to(
+      edit_project_path(@project),
+      alert: ex.to_s
+    )
+  end
+
+  def export
+    @project.add_export_job(current_user: current_user)
+
+    redirect_to(
+      edit_project_path(@project),
+      notice: "项目开始导出。将通过电子邮件发送下载链接。"
+    )
+  end
+
+  def download_export
+    export_project_path = @project.export_project_path
+
+    if export_project_path
+      send_file export_project_path, disposition: 'attachment'
+    else
+      redirect_to(
+        edit_project_path(@project),
+        alert: "项目导出链接已过期。 请从您的项目设置中生成新的导出。"
+      )
+    end
+  end
+
+  def remove_export
+    if @project.remove_exports
+      flash[:notice] = "项目导出已经被删除。"
+    else
+      flash[:alert] = "无法删除项目导出。"
+    end
+    redirect_to(edit_project_path(@project))
+  end
+
+  def generate_new_export
+    if @project.remove_exports
+      export
+    else
+      redirect_to(
+        edit_project_path(@project),
+        alert: "无法删除项目导出。"
+      )
+    end
+  end
+
+  def toggle_star
+    current_user.toggle_star(@project)
+    @project.reload
+
+    render json: {
+      star_count: @project.star_count
+    }
+  end
+
+  def preview_markdown
+    text = params[:text]
+
+    ext = Gitlab::ReferenceExtractor.new(@project, current_user)
+    ext.analyze(text, author: current_user)
+
+    render json: {
+      body:       view_context.markdown(text),
+      references: {
+        users: ext.users.map(&:username)
+      }
+    }
+  end
+
+  def refs
+    options = {
+      'Branches' => @repository.branch_names,
+    }
+
+    unless @repository.tag_count.zero?
+      options['Tags'] = VersionSorter.rsort(@repository.tag_names)
+    end
+
+    # If reference is commit id - we should add it to branch/tag selectbox
+    ref = Addressable::URI.unescape(params[:ref])
+    if ref && options.flatten(2).exclude?(ref) && ref =~ /\A[0-9a-zA-Z]{6,52}\z/
+      options['Commits'] = [ref]
+    end
+
+    render json: options.to_json
+  end
+
+  private
+
+  # Render project landing depending of which features are available
+  # So if page is not availble in the list it renders the next page
+  #
+  # pages list order: repository readme, wiki home, issues list, customize workflow
+  def render_landing_page
+    if @project.feature_available?(:repository, current_user)
+      return render 'projects/no_repo' unless @project.repository_exists?
+      render 'projects/empty' if @project.empty_repo?
+    else
+      if @project.wiki_enabled?
+        @wiki_home = @project.wiki.find_page('home', params[:version_id])
+      elsif @project.feature_available?(:issues, current_user)
+        @issues = issues_collection
+        @issues = @issues.page(params[:page])
+      end
+
+      render :show
+    end
   end
 
   def determine_layout
-    if @project && !@project.new_record?
-      "project"
+    if [:new, :create].include?(action_name.to_sym)
+      'application'
+    elsif [:edit, :update].include?(action_name.to_sym)
+      'project_settings'
     else
-      "application"
+      'project'
     end
+  end
+
+  def load_events
+    @events = @project.events.recent
+    @events = event_filter.apply_filter(@events).with_associations
+    limit = (params[:limit] || 20).to_i
+    @events = @events.limit(limit).offset(params[:offset] || 0)
+  end
+
+  def project_params
+    project_feature_attributes =
+      {
+        project_feature_attributes:
+          [
+            :issues_access_level, :builds_access_level,
+            :wiki_access_level, :merge_requests_access_level,
+            :snippets_access_level, :repository_access_level
+          ]
+      }
+
+    params.require(:project).permit(
+      :name, :path, :description, :issues_tracker, :tag_list, :runners_token,
+      :container_registry_enabled,
+      :issues_tracker_id, :default_branch,
+      :visibility_level, :import_url, :last_activity_at, :namespace_id, :avatar,
+      :build_allow_git_fetch, :build_timeout_in_minutes, :build_coverage_regex,
+      :public_builds, :only_allow_merge_if_build_succeeds, :request_access_enabled,
+      :lfs_enabled, project_feature_attributes
+    )
+  end
+
+  def repo_exists?
+    project.repository_exists? && !project.empty_repo? && project.repo
+
+  rescue Gitlab::Git::Repository::NoRepository
+    project.repository.expire_exists_cache
+
+    false
+  end
+
+  def project_view_files?
+    current_user && current_user.project_view == 'files'
+  end
+
+  # Override extract_ref from ExtractsPath, which returns the branch and file path
+  # for the blob/tree, which in this case is just the root of the default branch.
+  # This way we avoid to access the repository.ref_names.
+  def extract_ref(_id)
+    [get_id, '']
+  end
+
+  # Override get_id from ExtractsPath in this case is just the root of the default branch.
+  def get_id
+    project.repository.root_ref
   end
 end

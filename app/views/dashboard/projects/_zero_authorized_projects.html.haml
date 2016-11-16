@@ -1,0 +1,46 @@
+- publicish_project_count = ProjectsFinder.new.execute(current_user).count
+.blank-state.blank-state-welcome
+  %h2.blank-state-welcome-title
+    欢迎来到 GitLab！
+  %p.blank-state-text
+    集代码，测试和部署于一体。
+.blank-state
+  .blank-state-icon
+    = custom_icon("project", size: 50)
+  %h3.blank-state-title
+    你现在不能访问任何项目。
+  %p.blank-state-text
+    - if current_user.can_create_project?
+      你可以最多创建
+      %strong= number_with_delimiter(current_user.projects_limit)
+      = succeed "." do
+        = "project".pluralize(current_user.projects_limit)
+    - else
+      如果你加入了项目，它将会显示在这里。
+  - if current_user.can_create_project?
+    = link_to new_project_path, class: "btn btn-new" do
+      新建项目
+
+- if current_user.can_create_group?
+  .blank-state
+    .blank-state-icon
+      = custom_icon("group", size: 50)
+    %h3.blank-state-title
+      你可以创建一个存放多个相关项目的群组。
+    %p.blank-state-text
+      群组是管理项目和成员的最佳方式。
+    = link_to new_group_path, class: "btn btn-new" do
+      新建群组
+
+-if publicish_project_count > 0
+  .blank-state
+    .blank-state-icon
+      = icon("globe")
+    %h3.blank-state-title
+      此服务器上有
+      = number_with_delimiter(publicish_project_count)
+      个公开项目。
+    %p.blank-state-text
+      公开项目允许全部人都可以只读访问。
+    = link_to trending_explore_projects_path, class: "btn btn-new" do
+      浏览公开项目

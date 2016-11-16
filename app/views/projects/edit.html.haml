@@ -1,0 +1,290 @@
+.project-edit-container
+  .row.prepend-top-default
+    .col-lg-3.profile-settings-sidebar
+      %h4.prepend-top-0
+        项目设置
+    .col-lg-9
+      .project-edit-errors
+      = form_for [@project.namespace.becomes(Namespace), @project], remote: true, html: { multipart: true, class: "edit-project" }, authenticity_token: true do |f|
+        %fieldset.append-bottom-0
+          .form-group
+            = f.label :name, class: 'label-light' do
+              项目名称
+            = f.text_field :name, class: "form-control", id: "project_name_edit"
+          .form-group
+            = f.label :description, class: 'label-light' do
+              项目描述
+              %span.light (可选)
+            = f.text_area :description, class: "form-control", rows: 3, maxlength: 250
+
+          - unless @project.empty_repo?
+            .form-group
+              = f.label :default_branch, "默认分支", class: 'label-light'
+              = f.select(:default_branch, @project.repository.branch_names, {}, {class: 'select2 select-wide'})
+        .form-group.project-visibility-level-holder
+          = f.label :visibility_level, class: 'label-light' do
+            可见等级
+            = link_to "(?)", help_page_path("public_access/public_access")
+          - if can_change_visibility_level?(@project, current_user)
+            = render('shared/visibility_radios', model_method: :visibility_level, form: f, selected_level: @project.visibility_level, form_model: @project)
+          - else
+            .info
+              = visibility_level_icon(@project.visibility_level)
+              %strong
+                = visibility_level_label(@project.visibility_level)
+              .light= visibility_level_description(@project.visibility_level, @project)
+
+        .form-group
+          = render 'shared/allow_request_access', form: f
+
+        .form-group
+          = f.label :tag_list, "标签", class: 'label-light'
+          = f.text_field :tag_list, value: @project.tag_list.to_s, maxlength: 2000, class: "form-control"
+          %p.help-block 用逗号分隔标签。
+        %hr
+        %fieldset.features.append-bottom-0
+          %h5.prepend-top-0
+            功能特性可见性
+
+            = f.fields_for :project_feature do |feature_fields|
+              .form_group.prepend-top-20
+                .row
+                  .col-md-9
+                    = feature_fields.label :repository_access_level, "版本库", class: 'label-light'
+                    %span.help-block 存储推送到此项目的文件
+                  .col-md-3.js-repo-access-level
+                    = project_feature_access_select(:repository_access_level)
+
+                  .col-sm-12
+                    .row
+                      .col-md-9.project-feature-nested
+                        = feature_fields.label :merge_requests_access_level, "合并请求", class: 'label-light'
+                        %span.help-block 合并上游修改
+                      .col-md-3
+                        = project_feature_access_select(:merge_requests_access_level)
+
+                    .row
+                      .col-md-9.project-feature-nested
+                        = feature_fields.label :builds_access_level, "构建", class: 'label-light'
+                        %span.help-block 合并前测试和部署变更
+                      .col-md-3
+                        = project_feature_access_select(:builds_access_level)
+
+                .row
+                  .col-md-9
+                    = feature_fields.label :snippets_access_level, "代码片段", class: 'label-light'
+                    %span.help-block 共享 git 版本仓库外的代码
+                  .col-md-3
+                    = project_feature_access_select(:snippets_access_level)
+
+                .row
+                  .col-md-9
+                    = feature_fields.label :issues_access_level, "问题", class: 'label-light'
+                    %span.help-block 轻量级问题跟踪系统
+                  .col-md-3
+                    = project_feature_access_select(:issues_access_level)
+
+                .row
+                  .col-md-9
+                    = feature_fields.label :wiki_access_level, "维基", class: 'label-light'
+                    %span.help-block 项目文档页面
+                  .col-md-3
+                    = project_feature_access_select(:wiki_access_level)
+
+            - if Gitlab.config.lfs.enabled && current_user.admin?
+              .checkbox
+                = f.label :lfs_enabled do
+                  = f.check_box :lfs_enabled
+                  %strong LFS
+                  %br
+                  %span.descr
+                    Git 大文件存储(LfS)
+                    = link_to icon('question-circle'), help_page_path('workflow/lfs/manage_large_binaries_with_git_lfs')
+
+          - if Gitlab.config.registry.enabled
+            .form-group
+              .checkbox
+                = f.label :container_registry_enabled do
+                  = f.check_box :container_registry_enabled
+                  %strong 容器注册表
+                  %br
+                  %span.descr 开启此仓库的容器注册表
+                  = link_to icon('question-circle'), help_page_path('user/project/container_registry'), target: '_blank'
+
+        = render 'merge_request_settings', f: f
+        %hr
+        %fieldset.features.append-bottom-default
+          %h5.prepend-top-0
+            项目图标
+          .form-group
+            - if @project.avatar?
+              = project_icon("#{@project.namespace.to_param}/#{@project.to_param}", alt: '', class: 'avatar project-avatar s160')
+            %p.light
+              - if @project.avatar_in_git
+                项目图标保存在版本库： #{ @project.avatar_in_git }
+            %a.choose-btn.btn.js-choose-project-avatar-button
+              选择文件...
+            %span.file_name.prepend-left-default.js-avatar-filename 没有选择文件
+            = f.file_field :avatar, class: "js-project-avatar-input hidden"
+            .help-block 文件大小限制为 200KB。
+            - if @project.avatar?
+              %hr
+              = link_to '删除图标', namespace_project_avatar_path(@project.namespace, @project), data: { confirm: "确定要删除项目图标？"}, method: :delete, class: "btn btn-remove btn-sm remove-avatar"
+        = f.submit '保存修改', class: "btn btn-save"
+  .row.prepend-top-default
+  %hr
+  .row.prepend-top-default
+    .col-lg-3
+      %h4.prepend-top-0
+        维护
+      %p.append-bottom-0
+        %p
+          执行当前仓库的一些维护任务，诸如压缩文件修订版本和删除无用对象等。 
+    .col-lg-9
+      = link_to '维护', housekeeping_namespace_project_path(@project.namespace, @project),
+          method: :post, class: "btn btn-save"
+  %hr
+  .row.prepend-top-default
+    .col-lg-3
+      %h4.prepend-top-0
+        导出项目
+      %p.append-bottom-0
+        %p
+          将此项目及其所有相关数据导出并移动到新的 GitLab 实例。导出完成后，您可以在“新建项目”页面导入文项目文件。
+        %p
+          项目导出完毕后，您将收到一封包含下载链接的邮件通知。
+
+    .col-lg-9
+
+      - if @project.export_project_path
+        = link_to '下载导出',  download_export_namespace_project_path(@project.namespace, @project),
+                method: :get, class: "btn btn-default"
+        = link_to '创建新的导出',  generate_new_export_namespace_project_path(@project.namespace, @project),
+                method: :post, class: "btn btn-default"
+      - else
+        = link_to '导出项目', export_namespace_project_path(@project.namespace, @project),
+                method: :post, class: "btn btn-default"
+
+      .bs-callout.bs-callout-info
+        %p.append-bottom-0
+          %p
+            将导出以下内容
+          %ul
+            %li 项目 和 wiki 版本库
+            %li 项目上传的附件
+            %li 包含 Web 钩子和服务的项目设置
+            %li 问题及讨论、 包含对比文件和讨论的合并请求、标记、里程碑、代码碎片及其它的项目内容
+          %p
+            将不导出以下内容：
+          %ul
+            %li 构建跟踪及生成工件
+            %li LFS 对象
+  %hr
+  - if can? current_user, :archive_project, @project
+    .row.prepend-top-default
+      .col-lg-3
+        %h4.warning-title.prepend-top-0
+          - if @project.archived?
+            激活项目
+          - else
+            归档项目
+        %p.append-bottom-0
+          - if @project.archived?
+            激活项目将恢复项目版本仓库至可提交状态。
+          - else
+            归档项目将标识其版本仓库为只读。. 同时将在仪表盘隐藏并且不能搜索到。
+      .col-lg-9
+        - if @project.archived?
+          %p
+            %strong 激活后该项目可以被搜索到并显示在仪表盘中。
+          = link_to '激活项目', unarchive_namespace_project_path(@project.namespace, @project),
+              data: { confirm: "确定要激活本项目么？\n激活项目后可以重新提交版本仓库修改。" },
+              method: :post, class: "btn btn-success"
+        - else
+          %p
+            %strong 归档后项目将不能被提交！
+          = link_to '归档项目', archive_namespace_project_path(@project.namespace, @project),
+              data: { confirm: "确定要归档本项目么？\n归档后的项目将不能被提交。" },
+              method: :post, class: "btn btn-warning"
+  %hr
+  .row.prepend-top-default
+    .col-lg-3
+      %h4.prepend-top-0.warning-title
+        重命名版本库
+    .col-lg-9
+      = render 'projects/errors'
+      = form_for([@project.namespace.becomes(Namespace), @project]) do |f|
+        .form-group.project_name_holder
+          = f.label :name, class: 'label-light' do
+            项目名称
+          .form-group
+            = f.text_field :name, class: "form-control"
+        .form-group
+          = f.label :path, class: 'label-light' do
+            %span 路径
+          .form-group
+            .input-group
+              .input-group-addon
+                #{URI.join(root_url, @project.namespace.path)}/
+              = f.text_field :path, class: 'form-control'
+          %ul
+            %li 请小心。重命名项目仓库可能有意想不到的副作用。
+            %li 需要更新本地版本仓库指向新位置。
+        = f.submit '重命名项目', class: "btn btn-warning"
+  - if can?(current_user, :change_namespace, @project)
+    %hr
+    .row.prepend-top-default
+      .col-lg-3
+        %h4.prepend-top-0.danger-title
+          转移项目
+      .col-lg-9
+        = form_for([@project.namespace.becomes(Namespace), @project], url: transfer_namespace_project_path(@project.namespace, @project), method: :put, remote: true) do |f|
+          .form-group
+            = label_tag :new_namespace_id, nil, class: 'label-light' do
+              %span 命名空间
+            .form-group
+              = select_tag :new_namespace_id, namespaces_options(@project.namespace_id), { prompt: '选择一个项目命名空间', class: 'select2' }
+            %ul
+              %li 请注意：更改项目的命名空间可能有意想不到的副作用。
+              %li 只能将项目转移到能管理到的命名空间。
+              %li 需要更新本地版本仓库指向新位置。
+              %li 项目转移到群组时其可见度等级将自动匹配新的命名空间规则。
+          = f.submit '转移项目', class: "btn btn-remove js-confirm-danger", data: { "confirm-danger-message" => transfer_project_message(@project) }
+  - if @project.forked? && can?(current_user, :remove_fork_project, @project)
+    %hr
+    .row.prepend-top-default.append-bottom-default
+      .col-lg-3
+        %h4.prepend-top-0.danger-title
+          删除派生关系
+        %p.append-bottom-0
+          %p
+            将删除与源项目
+            = link_to @project.forked_from_project.name_with_namespace, project_path(@project.forked_from_project)
+            的派生关系。
+      .col-lg-9
+        = form_for([@project.namespace.becomes(Namespace), @project], url: remove_fork_namespace_project_path(@project.namespace, @project), method: :delete, remote: true, html: { class: 'transfer-project' }) do |f|
+          %p
+            %strong 派生关系一旦删除，将无法恢复；也将无法再提交合并请求到源项目。
+          = button_to '删除派生关系', '#', class: "btn btn-remove js-confirm-danger", data: { "confirm-danger-message" => remove_fork_project_message(@project) }
+  - if can?(current_user, :remove_project, @project)
+    %hr
+    .row.prepend-top-default.append-bottom-default
+      .col-lg-3
+        %h4.prepend-top-0.danger-title
+          删除项目
+        %p.append-bottom-0
+          删除项目将删除其版本仓库及所有相关资源，包括问题，合并请求等。
+      .col-lg-9
+        = form_tag(namespace_project_path(@project.namespace, @project), method: :delete) do
+          %p
+            %strong 项目删除后将无法恢复！
+          = button_to '删除项目', '#', class: "btn btn-remove js-confirm-danger", data: { "confirm-danger-message" => remove_project_message(@project) }
+
+.save-project-loader.hide
+  .center
+    %h2
+      %i.fa.fa-spinner.fa-spin
+      正在保存项目。
+    %p 请稍等片刻，本页面会在保存完毕后自动刷新。
+
+= render 'shared/confirm_modal', phrase: @project.path

@@ -1,0 +1,29 @@
+= content_for :sub_nav do
+  .scrolling-tabs-container.sub-nav-scroll
+    = render 'shared/nav_scroll'
+    .nav-links.sub-nav.scrolling-tabs
+      %ul{ class: (container_class) }
+        = nav_link(controller: :dashboard, html_options: {class: 'home'}) do
+          = link_to admin_root_path, title: '概述' do
+            %span
+              概述
+        = nav_link(controller: [:admin, :projects]) do
+          = link_to admin_namespaces_projects_path, title: '项目' do
+            %span
+              项目
+        = nav_link(controller: :users) do
+          = link_to admin_users_path, title: '用户' do
+            %span
+              用户
+        = nav_link(controller: :groups) do
+          = link_to admin_groups_path, title: '群组' do
+            %span
+              群组
+        = nav_link path: 'builds#index' do
+          = link_to admin_builds_path, title: '构建' do
+            %span
+              构建
+        = nav_link path: ['runners#index', 'runners#show'] do
+          = link_to admin_runners_path, title: 'Runners' do
+            %span
+              Runners

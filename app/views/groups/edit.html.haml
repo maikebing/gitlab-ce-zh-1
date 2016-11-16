@@ -1,0 +1,52 @@
+.panel.panel-default.prepend-top-default
+  .panel-heading
+    群组设置
+  .panel-body
+    = form_for @group, html: { multipart: true, class: "form-horizontal" }, authenticity_token: true do |f|
+      = form_errors(@group)
+      = render 'shared/group_form', f: f
+
+      .form-group
+        .col-sm-offset-2.col-sm-10
+          = image_tag group_icon(@group), alt: '', class: 'avatar group-avatar s160'
+          %p.light
+            - if @group.avatar?
+              你可以在这里修改群组图标
+            - else
+              你可以在这里上传群组图标
+          = render 'shared/choose_group_avatar_button', f: f
+          - if @group.avatar?
+            %hr
+            = link_to '删除图标', group_avatar_path(@group.to_param), data: { confirm: "确定要删除群组图标么？"}, method: :delete, class: "btn btn-remove btn-sm remove-avatar"
+
+      = render 'shared/visibility_level', f: f, visibility_level: @group.visibility_level, can_change_visibility_level: can_change_group_visibility_level?(@group), form_model: @group
+
+      .form-group
+        .col-sm-offset-2.col-sm-10
+          = render 'shared/allow_request_access', form: f
+
+      = render 'group_lfs_settings', f: f
+
+      .form-group
+        %hr
+        = f.label :share_with_group_lock, class: 'control-label' do
+          群组共享锁定
+        .col-sm-10
+          .checkbox
+            = f.check_box :share_with_group_lock
+            %span.descr 禁止此群组与其他群组共享项目
+
+
+      .form-actions
+        = f.submit '保存群组', class: "btn btn-save"
+
+.panel.panel-danger
+  .panel-heading 删除群组
+  .panel-body
+    %p
+      删除群组将删除全部子项目和相关资源。
+      %br
+      %strong 删除群组无法恢复！
+
+    .form-actions
+      = link_to '删除群组', @group, data: {confirm: '删除群组无法恢复！确定要继续么？'}, method: :delete, class: "btn btn-remove"

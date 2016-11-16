@@ -1,51 +1,92 @@
 .user_new
-  = form_for [:admin, @admin_user] do |f|
-    -if @admin_user.errors.any?
-      #error_explanation
-        %h2= "#{pluralize(@admin_user.errors.count, "error")} prohibited this admin_user from being saved:"
-        %ul
-          - @admin_user.errors.full_messages.each do |msg|
-            %li= msg
+  = form_for [:admin, @user], html: { class: 'form-horizontal fieldset-form' } do |f|
+    = form_errors(@user)
 
-    .span-24
-      .span-11.colborder
-        .field
-          = f.label :name
-          %br
-          = f.text_field :name
-        .field
-          = f.label :email
-          %br
-          = f.text_field :email
-        .field
-          = f.label :password
-          %br
-          = f.password_field :password
-        .field
-          = f.label :password_confirmation
-          %br
-          = f.password_field :password_confirmation
-        .field.prepend-top
-          = f.check_box :admin
-          = f.label :admin
-      .span-11
-        .field.prepend-top
-          = f.text_field :projects_limit, :class => "small_input"
-          = f.label :projects_limit
+    %fieldset
+      %legend 账号
+      .form-group
+        = f.label :name, "姓名", class: 'control-label'
+        .col-sm-10
+          = f.text_field :name, required: true, autocomplete: 'off', class: 'form-control'
+          %span.help-inline * 必须填写
+      .form-group
+        = f.label :username, "用户名", class: 'control-label'
+        .col-sm-10
+          = f.text_field :username, required: true, autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: false, class: 'form-control'
+          %span.help-inline * 必须填写
+      .form-group
+        = f.label :email, "电子邮箱", class: 'control-label'
+        .col-sm-10
+          = f.text_field :email, required: true, autocomplete: 'off', class: 'form-control'
+          %span.help-inline * 必须填写
 
-        .field
-          = f.label :skype
-          %br
-          = f.text_field :skype
-        .field
-          = f.label :linkedin
-          %br
-          = f.text_field :linkedin
-        .field
-          = f.label :twitter
-          %br
-          = f.text_field :twitter
-    .clear
-    %br
-    .actions
-      = f.submit 'Save', :class => "lbutton"
+    - if @user.new_record?
+      %fieldset
+        %legend Password
+        .form-group
+          = f.label :password, "密码", class: 'control-label'
+          .col-sm-10
+            %strong
+              重置链接将自动生成临时密码发送给用户。
+              %br
+              用户在第一次登录后需要强制修改密码。
+    - else
+      %fieldset
+        %legend 密码
+        .form-group
+          = f.label :password, "密码", class: 'control-label'
+          .col-sm-10= f.password_field :password, disabled: f.object.force_random_password, class: 'form-control'
+        .form-group
+          = f.label :password_confirmation, "确认密码", class: 'control-label'
+          .col-sm-10= f.password_field :password_confirmation, disabled: f.object.force_random_password, class: 'form-control'
+
+    %fieldset
+      %legend 权限
+      .form-group
+        = f.label :projects_limit, "项目限制", class: 'control-label'
+        .col-sm-10= f.number_field :projects_limit, min: 0, class: 'form-control'
+
+      .form-group
+        = f.label :can_create_group, "是否可以创建群组", class: 'control-label'
+        .col-sm-10= f.check_box :can_create_group
+
+      .form-group
+        = f.label :admin, "管理", class: 'control-label'
+        - if current_user == @user
+          .col-sm-10= f.check_box :admin, disabled: true
+          .col-sm-10 不能删除自己的管理权限。
+        - else
+          .col-sm-10= f.check_box :admin
+
+      .form-group
+        = f.label :external, "外部", class: 'control-label'
+        .col-sm-10= f.check_box :external
+        .col-sm-10 除非明确授权，外部用户无法看到任何内部和私有项目。同样，外部用户无法创建项目和群组。
+
+    %fieldset
+      %legend 个人资料
+      .form-group
+        = f.label :avatar, "头像", class: 'control-label'
+        .col-sm-10
+          = f.file_field :avatar
+
+      .form-group
+        = f.label :skype, class: 'control-label'
+        .col-sm-10= f.text_field :skype, class: 'form-control'
+      .form-group
+        = f.label :linkedin, "领英", class: 'control-label'
+        .col-sm-10= f.text_field :linkedin, class: 'form-control'
+      .form-group
+        = f.label :twitter, "推特", class: 'control-label'
+        .col-sm-10= f.text_field :twitter, class: 'form-control'
+      .form-group
+        = f.label :website_url, "网址", class: 'control-label'
+        .col-sm-10= f.text_field :website_url, class: 'form-control'
+
+    .form-actions
+      - if @user.new_record?
+        = f.submit '创建用户', class: "btn btn-create"
+        = link_to '取消', admin_users_path, class: "btn btn-cancel"
+      - else
+        = f.submit '保存修改', class: "btn btn-save"
+        = link_to '取消', admin_user_path(@user), class: "btn btn-cancel"

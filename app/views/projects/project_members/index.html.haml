@@ -1,0 +1,28 @@
+- page_title "成员"
+
+.project-members-page.prepend-top-default
+  %h4.project-members-title.clearfix
+    成员
+    = link_to "导入", import_namespace_project_project_members_path(@project.namespace, @project), class: "btn btn-default pull-right hidden-xs", title: "从其他项目导入成员"
+  - if can?(current_user, :admin_project_member, @project)
+    .project-members-new.append-bottom-default
+      %p.clearfix
+        添加新用户到
+        %strong= @project.name
+      = render "new_project_member"
+
+      = render 'shared/members/requests', membership_source: @project, requesters: @requesters
+
+  .append-bottom-default.clearfix
+    %h5.member.existing-title
+      现有用户和群组
+    = form_tag namespace_project_project_members_path(@project.namespace, @project), method: :get, class: 'form-inline member-search-form'  do
+      .form-group
+        = search_field_tag :search, params[:search], { placeholder: '通过姓名查找现有成员', class: 'form-control', spellcheck: false }
+        %button.member-search-btn{ type: "submit", "aria-label" => "搜索" }
+          = icon("search")
+  - if @group_links.any?
+    = render 'groups', group_links: @group_links
+
+  = render 'team', members: @project_members
+  = paginate @project_members, theme: "gitlab"

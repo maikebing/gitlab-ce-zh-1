@@ -1,14 +1,38 @@
-!!!
-%html
-  %head
-    %title
-      GitLab #{" - #{@project.name}" if @project && !@project.new_record?}
-    = stylesheet_link_tag    "application"
-    = javascript_include_tag "application"
-    = csrf_meta_tags
-    = javascript_tag do
-      REQ_URI = "#{request.env["REQUEST_URI"]}";
-      REQ_REFFER = "#{request.env["HTTP_REFERER"]}";
-  %body.login-page
-    = render :partial => "layouts/flash"
-    = yield
+!!! 5
+%html{ lang: "en", class: "devise-layout-html"}
+  = render "layouts/head"
+  %body.ui_charcoal.login-page.application.navless{ data: { page: body_data_page }}
+    .page-wrap
+      = Gon::Base.render_data
+      = render "layouts/header/empty"
+      = render "layouts/broadcast"
+      .container.navless-container
+        .content
+          = render "layouts/flash"
+          .row
+            .col-sm-5.pull-right.new-session-forms-container
+              = yield
+            .col-sm-7.brand-holder.pull-left
+              %h1
+                = brand_title
+              - if brand_item
+                = brand_image
+                = brand_text
+              - else
+                %h3 用于代码协作的开源软件
+
+                %p
+                  细粒度访问控制管理 git 仓库以保证代码安全。
+                  使用合并请求进行代码审查并加强团体合作。
+                  每个项目均有自己的问题跟踪和维基页面。
+
+            - if current_application_settings.sign_in_text.present?
+              = markdown_field(current_application_settings, :sign_in_text)
+
+      %hr.footer-fixed
+      .container.footer-container
+        .footer-links
+          = link_to "浏览", explore_root_path
+          = link_to "帮助", help_path
+          = link_to "关于 GitLab", "https://about.gitlab.com/"
+          = link_to "中文社区版", "https://gitlab.com/xhang/gitlab/"
