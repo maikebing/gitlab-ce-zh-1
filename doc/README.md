@@ -2,7 +2,7 @@
 
 ## 用户文档
 
-- [账号安全](user/account/security.md) 使用双因素认证等验证方式以确保账号的安全性。
+- [账号安全](user/account/security.md) 使用两步验证等方式以确保账号的安全性。
 - [API](api/README.md) 通过简单而又强大的API实现GitLab自动化。
 - [CI/CD](ci/README.md) GitLab可持续集成系统（CI）和可持续交付系统（CD），`.gitlab-ci.yml`参数配置及一些例子。.
 - [使用GitLab提供OAuth2验证服务](integration/oauth_provider.md) 使用GitLab为其他应用的提供身份验证服务。
